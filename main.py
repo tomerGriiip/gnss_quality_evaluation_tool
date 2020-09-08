@@ -1,16 +1,18 @@
 import os
 import pymysql
 
-from constants import DataRowNames, DBArguments
+from constants import DataRowNames, DBArguments, LONG_TO_LAT_PATH, TIME_TO_SPEED_PATH
 from utils import initialize_logger
 
+from datetime import datetime
+from pathlib import Path
 from decimal import Decimal
 from dotenv import load_dotenv
 import matplotlib.pyplot as plt
 from math import sin, cos, sqrt, atan2, radians
 
-START_TIME = '2020-09-04 06:20:00'
-END_TIME = '2020-09-04 07:58:29'
+START_TIME = '2020-09-04 08:14:00'
+END_TIME = '2020-09-04 08:25:40'
 
 
 load_dotenv()
@@ -165,7 +167,13 @@ def _plot_long_to_lat(data_rows_list):
             data["gps_long_fine"].append(data_row[DataRowNames.GPS_LONG])
             data["gps_lat_fine"].append(data_row[DataRowNames.GPS_LAT])
     plt.scatter(data['gps_long_fine'], data['gps_lat_fine'], s=1, c=range(0, len(data['gps_long_fine'])), cmap='Blues')
-    plt.scatter(data['gps_long_error'], data['gps_lat_error'], s=10, color='r')
+    plt.scatter(data['gps_long_error'], data['gps_lat_error'], s=1, color='r')
+
+    if Path(LONG_TO_LAT_PATH).exists():
+        start_time = datetime.strptime(START_TIME, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d %H-%M-%S')
+        end_time = datetime.strptime(END_TIME, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d %H-%M-%S')
+        file_name_path = LONG_TO_LAT_PATH + '{} - {}.png'.format(start_time, end_time)
+        plt.savefig(fname=file_name_path, dpi=1200)
 
     plt.show()
 
@@ -201,7 +209,13 @@ def _plot_time_to_speed(data_rows_list):
 
     plt.scatter(data['gps_speed_time'], data['gps_speed'], s=1, color='b')
     plt.scatter(data['calculated_speed_fine_time'], data['calculated_speed_fine'], s=1, color='g')
-    plt.scatter(data['calculated_speed_error_time'], data['calculated_speed_error'], s=10, color='r')
+    plt.scatter(data['calculated_speed_error_time'], data['calculated_speed_error'], s=1, color='r')
+
+    if Path(TIME_TO_SPEED_PATH).exists():
+        start_time = datetime.strptime(START_TIME, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d %H-%M-%S')
+        end_time = datetime.strptime(END_TIME, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d %H-%M-%S')
+        file_name_path = TIME_TO_SPEED_PATH + '{} - {}.png'.format(start_time, end_time)
+        plt.savefig(fname=file_name_path, dpi=1200)
 
     plt.show()
 

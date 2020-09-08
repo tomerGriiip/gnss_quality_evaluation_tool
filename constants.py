@@ -15,3 +15,7 @@ class DBArguments:
     DB_USER = 'DB_USER'
     PASSWORD = 'PASSWORD'
     DB = 'DB'
+
+
+LONG_TO_LAT_PATH = 'G:/Shared drives/Technologies/Development/GNSS Quality Evaluation graphs/Longitude to Latitude/'
+TIME_TO_SPEED_PATH = 'G:/Shared drives/Technologies/Development/GNSS Quality Evaluation graphs/Time to Speed/'
