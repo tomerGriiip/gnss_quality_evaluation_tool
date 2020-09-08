@@ -1,9 +1,11 @@
 import os
 import pymysql
 
+from constants import DataRowNames, DBArguments
+from utils import initialize_logger
+
 from decimal import Decimal
 from dotenv import load_dotenv
-
 import matplotlib.pyplot as plt
 from math import sin, cos, sqrt, atan2, radians
 
@@ -12,16 +14,18 @@ END_TIME = '2020-09-04 07:58:29'
 
 
 load_dotenv()
+logger = initialize_logger()
 
 
 class DBQuery:
     _CURSOR_CLASS = pymysql.cursors.DictCursor
+    _CHARSET = 'utf8mb4'
     _DB_CONNECTION = pymysql.connect(
-        host=os.getenv('HOST'),
-        user=os.getenv('DB_USER'),
-        password=os.getenv('PASSWORD'),
-        db=os.getenv('DB'),
-        charset=os.getenv('CHARSET'),
+        host=os.getenv(DBArguments.HOST),
+        user=os.getenv(DBArguments.DB_USER),
+        password=os.getenv(DBArguments.PASSWORD),
+        db=os.getenv(DBArguments.DB),
+        charset=_CHARSET,
         cursorclass=_CURSOR_CLASS
     )
 
@@ -71,33 +75,37 @@ class DBQuery:
 
 
 class DataEvaluator:
-    def __init__(self, min_speed_threshold=10, speed_error_threshold=0.5, kmh_to_ms=3600/1000):
+    def __init__(self, min_speed_threshold=10, speed_error_threshold=0.3, kmh_to_ms=3600/1000):
         self.min_speed_threshold = min_speed_threshold
         self.speed_error_threshold = speed_error_threshold
         self.kmh_to_ms = kmh_to_ms
 
     def run(self, data_rows_list):
         if data_rows_list:
-            previous_lat = data_rows_list[0]['gps_lat']
-            previous_long = data_rows_list[0]['gps_long']
-            previous_timestamp = data_rows_list[0]['timestamp']
-        else:
-            raise Exception("No data fount in the provided time range")
+            previous_lat = data_rows_list[0][DataRowNames.GPS_LAT]
+            previous_long = data_rows_list[0][DataRowNames.GPS_LONG]
+            previous_timestamp = data_rows_list[0][DataRowNames.TIMESTAMP]
+            session_start_time = data_rows_list[0][DataRowNames.TIMESTAMP]
 
-        for data_row in data_rows_list[1:]:
-            current_lat = data_row['gps_lat']
-            current_long = data_row['gps_long']
-            current_timestamp = data_row['timestamp']
+            data_rows_list[0][DataRowNames.TOTAL_TIME] = 0
+        else:
+            raise Exception("No data found in the provided time range")
+
+        for row_index, data_row in enumerate(data_rows_list[1:], start=1):
+            current_lat = data_row[DataRowNames.GPS_LAT]
+            current_long = data_row[DataRowNames.GPS_LONG]
+            current_timestamp = data_row[DataRowNames.TIMESTAMP]
 
             delta_distance = self._calculate_delta_distance(previous_lat, previous_long, current_lat, current_long)
             delta_time = self._calculate_delta_time(current_timestamp, previous_timestamp)
 
-            if delta_time > 0:
-                calculated_speed = self._calculate_delta_distance_to_delta_time(delta_distance, delta_time)
-            else:
-                calculated_speed = 99999999
+            total_time = self._calculate_delta_time(current_timestamp, session_start_time)
+            data_row[DataRowNames.TOTAL_TIME] = total_time
 
-            self._check_speed_error(data_row, calculated_speed)
+            calculated_speed = self._calculate_delta_distance_to_delta_time(delta_distance, delta_time)
+            data_row[DataRowNames.CALCULATED_SPEED] = calculated_speed
+
+            self._check_speed_error(data_row, calculated_speed, row_index)
             previous_lat, previous_long, previous_timestamp = current_lat, current_long, current_timestamp
 
         return data_rows_list
@@ -120,51 +128,86 @@ class DataEvaluator:
         return radius * c * 1000
 
     @staticmethod
-    def _calculate_delta_time(current_timestamp, previous_timestamp):
-        return (current_timestamp - previous_timestamp).total_seconds()
+    def _calculate_delta_time(current_timestamp, older_timestamp):
+        return (current_timestamp - older_timestamp).total_seconds()
 
     def _calculate_delta_distance_to_delta_time(self, delta_distance, delta_time):
-        return (delta_distance / delta_time) * self.kmh_to_ms
+        if delta_time > 0:
+            return (delta_distance / delta_time) * self.kmh_to_ms
 
-    def _check_speed_error(self, data_row, calculated_speed):
-        gps_speed = data_row['gps_speed']
+        return 9999999999
+
+    def _check_speed_error(self, data_row, calculated_speed, row_index):
+        gps_speed = data_row[DataRowNames.GPS_SPEED]
 
         if gps_speed > self.min_speed_threshold:
             speed_error = abs(gps_speed - calculated_speed) / gps_speed
             if speed_error > self.speed_error_threshold:
-                data_row['speed_error'] = True
+                logger.info("Speed error found for data row: {}, speed_error = {}, speed_error_threshold = {}".format(
+                    row_index, speed_error, self.speed_error_threshold)
+                )
+                data_row[DataRowNames.SPEED_ERROR] = True
 
 
-def plot(data_rows_list):
+def _plot_long_to_lat(data_rows_list):
     plt.figure()
     plt.title = 'Longitude to Latitude'
     plt.xlabel('Long')
     plt.ylabel('Lat')
     plt.grid(True)
 
-    x_cor_min = 0.995 * (data_rows_list[0]['gps_long'])
-    x_cor_max = 1.005 * (data_rows_list[len(data_rows_list) - 1]['gps_long'])
-    y_cor_min = 0.995 * (data_rows_list[0]['gps_lat'])
-    y_cor_max = 1.005 * (data_rows_list[len(data_rows_list) - 1]['gps_lat'])
-    print(x_cor_min, x_cor_max, y_cor_min, y_cor_max)
-    plt.xlim(x_cor_min, x_cor_max)
-    plt.ylim(y_cor_min, y_cor_max)
-
-    data = {"x_fine": [], "y_fine": [], "x_error": [], "y_error": []}
+    data = {"gps_long_fine": [], "gps_lat_fine": [], "gps_long_error": [], "gps_lat_error": []}
     for data_row in data_rows_list:
-        if data_row.get('speed_error'):
-            data["x_error"].append(data_row['gps_long'])
-            data["y_error"].append(data_row['gps_lat'])
+        if data_row.get(DataRowNames.SPEED_ERROR):
+            data["gps_long_error"].append(data_row[DataRowNames.GPS_LONG])
+            data["gps_lat_error"].append(data_row[DataRowNames.GPS_LAT])
         else:
-            data["x_fine"].append(data_row['gps_long'])
-            data["y_fine"].append(data_row['gps_lat'])
-    plt.scatter(data['x_fine'], data['y_fine'], s=1, color='b')
-    plt.scatter(data['x_error'], data['y_error'], s=1, color='r')
+            data["gps_long_fine"].append(data_row[DataRowNames.GPS_LONG])
+            data["gps_lat_fine"].append(data_row[DataRowNames.GPS_LAT])
+    plt.scatter(data['gps_long_fine'], data['gps_lat_fine'], s=1, c=range(0, len(data['gps_long_fine'])), cmap='Blues')
+    plt.scatter(data['gps_long_error'], data['gps_lat_error'], s=10, color='r')
+
+    plt.show()
+
+
+def _plot_time_to_speed(data_rows_list):
+    plt.figure()
+    plt.title = 'Time to Speed'
+    plt.xlabel('Time')
+    plt.ylabel('Speed')
+    plt.grid(True)
+
+    data = {
+        "calculated_speed_fine": [],
+        "calculated_speed_fine_time": [],
+        "calculated_speed_error": [],
+        "calculated_speed_error_time": [],
+        "gps_speed": [],
+        "gps_speed_time": [],
+    }
+    for index, data_row in enumerate(data_rows_list):
+        if index == 0:
+            continue
+
+        if data_row.get(DataRowNames.SPEED_ERROR):
+            data["calculated_speed_error"].append(data_row[DataRowNames.CALCULATED_SPEED])
+            data["calculated_speed_error_time"].append(data_row[DataRowNames.TOTAL_TIME])
+        else:
+            data["calculated_speed_fine"].append(data_row[DataRowNames.CALCULATED_SPEED])
+            data["calculated_speed_fine_time"].append(data_row[DataRowNames.TOTAL_TIME])
+
+        data["gps_speed"].append(data_row[DataRowNames.GPS_SPEED])
+        data["gps_speed_time"].append(data_row[DataRowNames.TOTAL_TIME])
+
+    plt.scatter(data['gps_speed_time'], data['gps_speed'], s=1, color='b')
+    plt.scatter(data['calculated_speed_fine_time'], data['calculated_speed_fine'], s=1, color='g')
+    plt.scatter(data['calculated_speed_error_time'], data['calculated_speed_error'], s=10, color='r')
 
     plt.show()
 
 
 if __name__ == '__main__':
-    raw_data_from_db = DBQuery().get_run_data_by_time_range(start_time=START_TIME, end_time=END_TIME)
-    evaluated_data = DataEvaluator().run(data_rows_list=raw_data_from_db)
-    plot(evaluated_data)
+    run_data_by_time_range = DBQuery().get_run_data_by_time_range(start_time=START_TIME, end_time=END_TIME)
+    evaluated_run_data = DataEvaluator().run(data_rows_list=run_data_by_time_range)
+    _plot_long_to_lat(evaluated_run_data)
+    _plot_time_to_speed(evaluated_run_data)
