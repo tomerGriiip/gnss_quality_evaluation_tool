@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 
 from pathlib import Path
 
-from utils.constants import PlotConsts, DataRowsHeaders, GeneralConsts, LONG_TO_LAT_PATH, TIME_TO_SPEED_PATH
+from utils.constants import PlotConsts, DataRowsHeaders, GeneralConsts, LONG_TO_LAT_PATH, TIME_TO_SPEED_PATH, \
+    TIME_TO_DELTA_TIME_PATH
 
 logger = logging.getLogger('utils.utils')
 
@@ -91,6 +92,47 @@ class GraphsBuilder:
             file_name_path = TIME_TO_SPEED_PATH + '{} - {}.png'.format(self.start_time, self.end_time)
 
             logger.info("Uploading Time to Speed graph to google drive")
+            plt.savefig(fname=file_name_path, dpi=1200, format='png')
+
+        plt.show()
+
+    def plot_time_to_time_delta(self, data_rows_list):
+        plt.figure()
+        plt.title = 'Time to Delta-Time'
+        plt.xlabel('Time')
+        plt.ylabel('Delta-Time')
+        plt.grid(True)
+
+        data = {
+            PlotConsts.CALCULATED_DELTA_TIME: [],
+            PlotConsts.CALCULATED_DELTA_TIME_TIME: [],
+            PlotConsts.CALCULATED_DELTA_TIME_ERROR: [],
+            PlotConsts.CALCULATED_DELTA_TIME_ERROR_TIME: [],
+        }
+        for index, data_row in enumerate(data_rows_list):
+            if index == 0:
+                continue
+
+            if data_row.get(GeneralConsts.TIME_ERROR):
+                data[PlotConsts.CALCULATED_DELTA_TIME_ERROR].append(data_row[GeneralConsts.CALCULATED_DELTA_TIME])
+                data[PlotConsts.CALCULATED_DELTA_TIME_ERROR_TIME].append(data_row[GeneralConsts.TOTAL_TIME])
+            else:
+                data[PlotConsts.CALCULATED_DELTA_TIME].append(data_row[GeneralConsts.CALCULATED_DELTA_TIME])
+                data[PlotConsts.CALCULATED_DELTA_TIME_TIME].append(data_row[GeneralConsts.TOTAL_TIME])
+
+        logger.info("Creating Time to Delta-Time graph")
+        plt.scatter(data[PlotConsts.CALCULATED_DELTA_TIME_TIME], data[PlotConsts.CALCULATED_DELTA_TIME], s=1, color='b')
+        plt.scatter(
+            data[PlotConsts.CALCULATED_DELTA_TIME_ERROR_TIME],
+            data[PlotConsts.CALCULATED_DELTA_TIME_ERROR],
+            s=1,
+            color='r'
+        )
+
+        if Path(TIME_TO_SPEED_PATH).exists() and self.upload_graphs:
+            file_name_path = TIME_TO_DELTA_TIME_PATH + '{} - {}.png'.format(self.start_time, self.end_time)
+
+            logger.info("Uploading Time to Delta-Time graph to google drive")
             plt.savefig(fname=file_name_path, dpi=1200, format='png')
 
         plt.show()
