@@ -29,6 +29,22 @@ parser.add_argument(
     dest="upload_graphs",
     default=False,
 )
+parser.add_argument(
+    "-m",
+    "--min_speed_threshold",
+    help="The minimum speed threshold that used to ignore \"noises\", default = 10",
+    dest="min_speed_threshold",
+    default=10,
+    type=float
+)
+parser.add_argument(
+    "-r",
+    "--speed_error_threshold",
+    help="The threshold for marking data rows as error, default = 0.3",
+    dest="speed_error_threshold",
+    default=0.3,
+    type=float
+)
 args = parser.parse_args()
 
 
@@ -40,7 +56,10 @@ if __name__ == '__main__':
     run_data_by_time_range = DBQuery().get_run_data_by_time_range(start_time=args.start_time, end_time=args.end_time)
 
     # Evaluate GNSS data for each data row
-    evaluated_run_data = GNSSEvaluator().evaluate(run_data_by_time_range)
+    evaluated_run_data = GNSSEvaluator(
+        min_speed_threshold=args.min_speed_threshold,
+        speed_error_threshold=args.speed_error_threshold
+    ).evaluate(run_data_by_time_range)
 
     converted_start_time = convert_strftime_format(args.start_time, STRFTIME_COLON_SEPARATED, STRFTIME_DASH_SEPARATED)
     converted_end_time = convert_strftime_format(args.end_time, STRFTIME_COLON_SEPARATED, STRFTIME_DASH_SEPARATED)

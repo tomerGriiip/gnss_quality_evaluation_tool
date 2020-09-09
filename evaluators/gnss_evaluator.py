@@ -68,7 +68,5 @@ class GNSSEvaluator:
         if gps_speed > self.min_speed_threshold:
             speed_error = abs(gps_speed - calculated_speed) / gps_speed
             if speed_error > self.speed_error_threshold:
-                logger.info("Speed error found for data row: {}, speed_error = {}, speed_error_threshold = {}".format(
-                    row_index, speed_error, self.speed_error_threshold)
-                )
+                logger.info("Speed error found for data row: {}, speed_error = {}".format(row_index, speed_error))
                 data_row[GeneralConsts.SPEED_ERROR] = True
