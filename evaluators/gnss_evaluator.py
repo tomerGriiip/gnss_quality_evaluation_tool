@@ -1,7 +1,8 @@
 import logging
 
+from geopy.distance import geodesic
+
 from utils.constants import DataRowsHeaders, GeneralConsts
-from math import sin, cos, sqrt, atan2, radians
 
 
 logger = logging.getLogger('utils.utils')
@@ -34,7 +35,7 @@ class GNSSEvaluator:
             current_long = data_row[DataRowsHeaders.GPS_LONG]
             current_timestamp = data_row[DataRowsHeaders.TIMESTAMP]
 
-            delta_distance = self._calculate_delta_distance(previous_lat, previous_long, current_lat, current_long)
+            delta_distance = geodesic((previous_lat, previous_long), (current_lat, current_long)).m
             delta_time = self._calculate_delta_time(current_timestamp, previous_timestamp)
 
             total_time = self._calculate_delta_time(current_timestamp, session_start_time)
@@ -51,23 +52,6 @@ class GNSSEvaluator:
         return data_rows_list
 
     @staticmethod
-    def _calculate_delta_distance(previous_lat, previous_long, current_lat, current_long):
-        radius = 6373.0
-
-        previous_lat = radians(previous_lat)
-        previous_long = radians(previous_long)
-        current_lat = radians(current_lat)
-        current_long = radians(current_long)
-
-        longitude_distance = current_long - previous_long
-        latitude_distance = current_lat - previous_lat
-
-        a = sin(latitude_distance / 2) ** 2 + cos(previous_lat) * cos(current_lat) * sin(longitude_distance / 2) ** 2
-        c = 2 * atan2(sqrt(a), sqrt(1 - a))
-
-        return radius * c * 1000
-
-    @staticmethod
     def _calculate_delta_time(current_timestamp, older_timestamp):
         return (current_timestamp - older_timestamp).total_seconds()
 
@@ -75,6 +59,7 @@ class GNSSEvaluator:
         if delta_time > 0:
             return (delta_distance / delta_time) * self._KMH_TO_MS
 
+        # Avoid division by zero, this data row will probably be marked as an error later on
         return 9999999999
 
     def _check_speed_error(self, data_row, calculated_speed, row_index):
