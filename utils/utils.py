@@ -1,5 +1,7 @@
 import logging
 
+from datetime import datetime
+
 
 def initialize_logger(logger_name=None, log_file_name=None, log_level=logging.INFO):
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -22,3 +24,7 @@ def initialize_logger(logger_name=None, log_file_name=None, log_level=logging.IN
         logger.addHandler(fh)
 
     return logger
+
+
+def convert_strftime_format(strftime_object, original_format, required_format):
+    return datetime.strptime(strftime_object, original_format).strftime(required_format)

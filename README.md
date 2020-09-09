@@ -4,11 +4,13 @@ and show the results on graphs in order to evaluate the quality of the data
 provided by the RedBox.
 
 ## Setup
-- Get the DB credentials and load them into the environment.
+- Get the DB credentials and load them into the .env file.
 - Run 'pip3 install -r requirements.txt' in order to install
 the required dependencies.
 
 ## Run
-To run execute the command 'python3 main.py'.
+To run execute the command 'python3 main.py -s ... -e ...'.
 
-Run python3 main.py --help for more information.
+Note that start and end times are mandatory fields.
+
+Run python3 main.py --help for more information about available arguments for configuration.
