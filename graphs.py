@@ -17,7 +17,8 @@ class GraphsBuilder:
 
     def plot_long_to_lat(self, data_rows_list):
         plt.figure()
-        plt.title = 'Longitude to Latitude'
+        graph_name = 'Longitude to Latitude'
+        plt.title = graph_name
         plt.xlabel('Long')
         plt.ylabel('Lat')
         plt.grid(True)
@@ -44,17 +45,14 @@ class GraphsBuilder:
         )
         plt.scatter(data[PlotConsts.GPS_LONG_ERROR], data[PlotConsts.GPS_LAT_ERROR], s=1, color='r')
 
-        if Path(LONG_TO_LAT_PATH).exists() and self.upload_graphs:
-            file_name_path = LONG_TO_LAT_PATH + '{} - {}.png'.format(self.start_time, self.end_time)
-
-            logger.info("Uploading Longitude to Latitude graph to google drive")
-            plt.savefig(fname=file_name_path, dpi=1200, format='png')
+        self._upload_to_drive(LONG_TO_LAT_PATH, graph_name)
 
         plt.show()
 
     def plot_time_to_speed(self, data_rows_list):
         plt.figure()
-        plt.title = 'Time to Speed'
+        graph_name = 'Time to Speed'
+        plt.title = graph_name
         plt.xlabel('Time')
         plt.ylabel('Speed')
         plt.grid(True)
@@ -88,17 +86,14 @@ class GraphsBuilder:
             data[PlotConsts.CALCULATED_SPEED_ERROR_TIME], data[PlotConsts.CALCULATED_SPEED_ERROR], s=1, color='r'
         )
 
-        if Path(TIME_TO_SPEED_PATH).exists() and self.upload_graphs:
-            file_name_path = TIME_TO_SPEED_PATH + '{} - {}.png'.format(self.start_time, self.end_time)
-
-            logger.info("Uploading Time to Speed graph to google drive")
-            plt.savefig(fname=file_name_path, dpi=1200, format='png')
+        self._upload_to_drive(TIME_TO_SPEED_PATH, graph_name)
 
         plt.show()
 
     def plot_time_to_time_delta(self, data_rows_list):
         plt.figure()
-        plt.title = 'Time to Delta-Time'
+        graph_name = 'Time to Delta-Time'
+        plt.title = graph_name
         plt.xlabel('Time')
         plt.ylabel('Delta-Time')
         plt.grid(True)
@@ -129,10 +124,13 @@ class GraphsBuilder:
             color='r'
         )
 
-        if Path(TIME_TO_SPEED_PATH).exists() and self.upload_graphs:
-            file_name_path = TIME_TO_DELTA_TIME_PATH + '{} - {}.png'.format(self.start_time, self.end_time)
-
-            logger.info("Uploading Time to Delta-Time graph to google drive")
-            plt.savefig(fname=file_name_path, dpi=1200, format='png')
+        self._upload_to_drive(TIME_TO_DELTA_TIME_PATH, graph_name)
 
         plt.show()
+
+    def _upload_to_drive(self, path_to_upload_to, graph_name):
+        if Path(path_to_upload_to).exists() and self.upload_graphs:
+            file_name_path = TIME_TO_DELTA_TIME_PATH + '{} - {}.png'.format(self.start_time, self.end_time)
+
+            logger.info("Uploading {} graph to google drive".format(graph_name))
+            plt.savefig(fname=file_name_path, dpi=1200, format='png')
