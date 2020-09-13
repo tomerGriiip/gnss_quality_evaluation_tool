@@ -2,6 +2,7 @@ import logging
 import matplotlib.pyplot as plt
 
 from pathlib import Path
+from statistics import pstdev
 
 from utils.constants import PlotConsts, DataRowsHeaders, GeneralConsts, LONG_TO_LAT_PATH, TIME_TO_SPEED_PATH, \
     TIME_TO_DELTA_TIME_PATH
@@ -18,9 +19,9 @@ class GraphsBuilder:
     def plot_long_to_lat(self, data_rows_list):
         plt.figure()
         graph_name = 'Longitude to Latitude'
-        plt.title = graph_name
-        plt.xlabel('Long')
-        plt.ylabel('Lat')
+        plt.title(graph_name)
+        plt.xlabel('Longitude')
+        plt.ylabel('Latitude')
         plt.grid(True)
 
         data = {
@@ -52,7 +53,7 @@ class GraphsBuilder:
     def plot_time_to_speed(self, data_rows_list):
         plt.figure()
         graph_name = 'Time to Speed'
-        plt.title = graph_name
+        plt.title(graph_name)
         plt.xlabel('Time')
         plt.ylabel('Speed')
         plt.grid(True)
@@ -93,7 +94,6 @@ class GraphsBuilder:
     def plot_time_to_time_delta(self, data_rows_list):
         plt.figure()
         graph_name = 'Time to Delta-Time'
-        plt.title = graph_name
         plt.xlabel('Time')
         plt.ylabel('Delta-Time')
         plt.grid(True)
@@ -124,13 +124,17 @@ class GraphsBuilder:
             color='r'
         )
 
+        # Calculate the standard deviation of the Delta-Time
+        standard_deviation = round(pstdev(data[PlotConsts.CALCULATED_DELTA_TIME]), 10)
+        plt.title(graph_name + ' - Standard Deviation: ' + str(standard_deviation))
+
         self._upload_to_drive(TIME_TO_DELTA_TIME_PATH, graph_name)
 
         plt.show()
 
     def _upload_to_drive(self, path_to_upload_to, graph_name):
         if Path(path_to_upload_to).exists() and self.upload_graphs:
-            file_name_path = TIME_TO_DELTA_TIME_PATH + '{} - {}.png'.format(self.start_time, self.end_time)
+            file_name_path = path_to_upload_to + '{} - {}.png'.format(self.start_time, self.end_time)
 
             logger.info("Uploading {} graph to google drive".format(graph_name))
             plt.savefig(fname=file_name_path, dpi=1200, format='png')
